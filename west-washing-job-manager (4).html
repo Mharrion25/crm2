@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>West Washing Co — Job Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Libre+Baskerville:wght@400;700&family=Libre+Baskerville:ital@1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1F2933;
+    --ink-soft:#3A4753;
+    --bg:#F4F8FB;
+    --panel:#FFFFFF;
+    --line:#DEE8EF;
+    --primary:#2D7DD2;
+    --primary-dark:#1F5FA6;
+    --primary-bg:#E7F1FB;
+    --accent:#4FBE8E;
+    --accent-dark:#2E9C6E;
+    --accent-bg:#E4F7EE;
+    --brand-red:#D6362B;
+    --brand-red-dark:#B32B22;
+    --brand-red-bg:#FBE7E5;
+    --grey-text:#6B7785;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    font-size:15px;
+    line-height:1.5;
+  }
+  h1,h2,h3,.brand,.nav-item,.stage-title,button{
+    font-family:'Space Grotesk',system-ui,sans-serif;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  #app{display:flex;min-height:100vh;}
+
+  /* ---- Sidebar ---- */
+  .sidebar{
+    width:220px;
+    flex-shrink:0;
+    background:linear-gradient(180deg,var(--primary-dark),#173F70);
+    color:#DCEBF9;
+    padding:24px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+  .brand{color:#fff;font-size:17px;font-weight:700;line-height:1.25;}
+  .brand span{display:block;font-size:11px;font-weight:500;color:#FF8981;letter-spacing:.02em;margin-top:4px;font-family:'Inter';}
+  .nav{display:flex;flex-direction:column;gap:3px;}
+  .nav-item{
+    background:none;border:none;text-align:left;color:#BBD4EC;
+    padding:10px 12px;border-radius:9px;font-size:14px;font-weight:500;
+    cursor:pointer;border-left:3px solid transparent;
+    transition:background .15s;
+  }
+  .nav-item:hover{background:rgba(255,255,255,0.09);color:#fff;}
+  .nav-item.active{background:rgba(255,255,255,0.14);color:#fff;border-left:3px solid var(--brand-red);}
+  .sidebar-foot{margin-top:auto;font-size:12px;color:#8FB3D6;}
+
+  /* ---- Main ---- */
+  main{flex:1;padding:28px 32px;max-width:1200px;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .view-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+  .view-head h1{font-size:22px;margin:0;font-weight:600;}
+  .view-head p{margin:4px 0 0;color:var(--grey-text);font-size:13.5px;}
+
+  button.primary{
+    background:var(--primary);color:#fff;border:none;padding:10px 16px;
+    border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;
+    transition:background .15s;
+  }
+  button.primary:hover{background:var(--primary-dark);}
+  button.accent{background:var(--accent);color:#fff;}
+  button.accent:hover{background:var(--accent-dark);}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--ink);padding:8px 12px;border-radius:9px;font-size:13px;cursor:pointer;font-weight:500;transition:background .15s;}
+  button.ghost:hover{background:var(--primary-bg);}
+  button.link{background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;padding:0;font-weight:600;font-family:'Inter';}
+  button:disabled{opacity:.55;cursor:not-allowed;}
+
+  /* ---- Dashboard stats ---- */
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
+  .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(31,73,110,0.06);}
+  .stat-card .num{font-size:26px;font-weight:700;font-family:'Space Grotesk';}
+  .stat-card .label{font-size:12.5px;color:var(--grey-text);margin-top:2px;}
+  .stat-card.warn .num{color:var(--brand-red);}
+  .stat-card.good .num{color:var(--accent-dark);}
+
+  .dash-section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(31,73,110,0.06);}
+  .dash-section h3{margin:0 0 12px;font-size:14.5px;font-weight:600;}
+  .empty-row{color:var(--grey-text);font-size:13.5px;padding:8px 0;}
+  .list-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .list-row:last-child{border-bottom:none;}
+  .list-row .r-left b{font-weight:600;}
+  .list-row .r-left small{display:block;color:var(--grey-text);font-size:12px;}
+
+  /* ---- Customers / tables ---- */
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(31,73,110,0.06);}
+  thead th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-text);font-weight:600;padding:11px 14px;border-bottom:1px solid var(--line);background:#F7FAFD;font-family:'Inter';}
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#FAFCFE;}
+  .search-box{padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;width:240px;font-family:'Inter';}
+  .search-box:focus{outline:2px solid var(--primary);outline-offset:-1px;}
+
+  /* ---- Job board ---- */
+  .board{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;}
+  .stage{flex:0 0 240px;background:#E9F1F8;border-radius:14px;padding:10px;}
+  .stage-title{font-size:13px;font-weight:600;display:flex;justify-content:space-between;padding:4px 6px 10px;color:var(--ink-soft);}
+  .stage-title .count{background:var(--primary);color:#fff;font-size:11px;padding:1px 7px;border-radius:10px;font-family:'Inter';font-weight:600;}
+  .job-card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:9px;cursor:pointer;transition:box-shadow .15s;}
+  .job-card:hover{box-shadow:0 3px 10px rgba(31,73,110,0.12);border-color:var(--primary);}
+  .job-card .jc-top{display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;}
+  .job-card .jc-service{font-size:12px;color:var(--primary);margin-top:2px;font-weight:500;}
+  .job-card .jc-meta{font-size:12px;color:var(--grey-text);margin-top:6px;}
+  .job-card .jc-price{font-family:'IBM Plex Mono';font-size:13px;font-weight:500;margin-top:6px;}
+
+  /* ---- Invoices list ---- */
+  .badge{display:inline-block;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;font-family:'Inter';}
+  .badge.paid{background:var(--accent-bg);color:var(--accent-dark);}
+  .badge.unpaid{background:var(--brand-red-bg);color:var(--brand-red);}
+
+  /* ---- Calendar ---- */
+  .cal-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .cal-head h2{font-size:16px;margin:0;font-weight:600;min-width:170px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+  .cal-dow{text-align:center;font-size:11.5px;font-weight:600;color:var(--grey-text);text-transform:uppercase;padding-bottom:4px;}
+  .cal-day{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    min-height:96px;padding:8px;position:relative;
+  }
+  .cal-day.other-month{background:#EDF2F6;opacity:.55;}
+  .cal-day.today{border:2px solid var(--primary);}
+  .cal-day .day-num{font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+  .cal-job-chip{
+    background:var(--primary-bg);color:var(--primary-dark);font-size:11px;font-weight:600;
+    padding:3px 6px;border-radius:6px;margin-top:5px;cursor:pointer;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .cal-job-chip:hover{background:var(--primary);color:#fff;}
+  .cal-job-time{font-family:'IBM Plex Mono';font-weight:600;}
+  .cal-add-btn{display:block;width:100%;margin-top:5px;border:1px dashed var(--line);background:none;color:var(--grey-text);border-radius:6px;padding:2px 4px;font-size:10px;cursor:pointer;}
+  .cal-add-btn:hover{background:var(--primary-bg);color:var(--primary-dark);}
+  .cal-job-chip.paid{background:var(--accent-bg);color:var(--accent-dark);}
+  .cal-job-chip.paid:hover{background:var(--accent);color:#fff;}
+  @media (max-width:820px){
+    .cal-grid{grid-template-columns:repeat(7,minmax(38px,1fr));gap:4px;}
+    .cal-day{min-height:70px;padding:5px;font-size:11px;}
+    .cal-job-chip{font-size:9.5px;padding:2px 4px;}
+    .cal-dow{font-size:10px;}
+  }
+
+  /* ---- Modal ---- */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(31,73,110,0.35);align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
+  .overlay.active{display:flex;}
+  .modal{background:var(--panel);border-radius:16px;width:100%;max-width:460px;padding:24px 26px;}
+  .modal.wide{max-width:620px;}
+  .modal h2{font-size:17px;margin:0 0 16px;font-weight:600;}
+  .field{margin-bottom:13px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;color:var(--ink-soft);}
+  .field input,.field select,.field textarea{
+    width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+    font-size:13.5px;font-family:'Inter';background:#fff;
+  }
+  .field textarea{resize:vertical;min-height:60px;}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--primary);outline-offset:-1px;}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:8px;}
+  .modal-actions .right{display:flex;gap:8px;flex-wrap:wrap;}
+  .err-text{color:var(--brand-red);font-size:12.5px;margin-top:8px;display:none;}
+
+  /* ---- AI description box + link box ---- */
+  .ai-box{background:var(--primary-bg);border:1px solid #C9E0F5;border-radius:11px;padding:12px 14px;margin-bottom:14px;}
+  .ai-box label{display:block;font-size:12px;font-weight:600;color:var(--primary-dark);margin-bottom:6px;}
+  .ai-box textarea{width:100%;border:1px solid #C9E0F5;border-radius:8px;padding:8px 10px;font-size:13px;font-family:'Inter';min-height:56px;background:#fff;}
+  .ai-actions{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .ai-status{font-size:12px;color:var(--primary-dark);margin-top:6px;display:none;}
+  .link-box{background:var(--accent-bg);border:1px solid #BFE7D3;border-radius:11px;padding:12px 14px;margin-bottom:14px;display:none;}
+  .link-box label{display:block;font-size:12px;font-weight:600;color:var(--accent-dark);margin-bottom:6px;}
+  .link-box .row{display:flex;gap:8px;}
+  .link-box input{flex:1;border:1px solid #BFE7D3;border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:'IBM Plex Mono';background:#fff;}
+
+  /* ---- Invoice document (shared by modal + public link view) ---- */
+  .inv-doc{background:#fff;padding:6px 2px;}
+  .inv-topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  .inv-brandblock{font-family:'Libre Baskerville',serif;}
+  .inv-brandblock .name{font-size:24px;font-weight:700;color:var(--primary-dark);letter-spacing:.01em;}
+  .inv-brandblock .tag{font-size:11px;font-weight:700;color:var(--brand-red);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+  .inv-contactblock{font-family:'Libre Baskerville',serif;text-align:right;font-size:12.5px;color:var(--ink);line-height:1.6;}
+  .inv-contactblock .site{font-style:italic;font-weight:700;color:var(--primary-dark);}
+  .inv-title{text-align:center;margin:6px 0 20px;}
+  .inv-title span{font-family:'Libre Baskerville',serif;font-size:26px;font-weight:700;letter-spacing:.12em;color:var(--ink);border-bottom:3px solid var(--brand-red);padding-bottom:6px;}
+  .inv-info-table{width:100%;border-collapse:collapse;margin-bottom:16px;table-layout:fixed;}
+  .inv-info-table th{background:#DDE9F5;color:var(--primary-dark);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding:7px 8px;border:1px solid #C7D9EB;text-align:left;}
+  .inv-info-table td{padding:8px;border:1px solid #C7D9EB;font-size:12.5px;text-align:left;word-break:break-word;}
+  .inv-customer{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px;font-size:13px;}
+  .inv-customer b.label{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.03em;margin-right:8px;}
+  .inv-customer .lines div{line-height:1.5;}
+  .inv-customer .email{text-decoration:underline;color:var(--primary-dark);align-self:flex-end;}
+  .inv-work-table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+  .inv-work-table th{background:#DDE9F5;color:var(--primary-dark);font-size:11px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;padding:8px 10px;border:1px solid #C7D9EB;text-align:left;}
+  .inv-work-table td{padding:12px 10px;border:1px solid #C7D9EB;font-size:13px;vertical-align:top;}
+  .inv-work-table td.svc-col{width:130px;font-weight:600;}
+  .inv-work-table td.cost-col{width:110px;text-align:right;font-family:'IBM Plex Mono';font-weight:600;}
+  .inv-summary{display:flex;justify-content:flex-end;margin-bottom:18px;}
+  .inv-summary table{width:auto;min-width:260px;border-collapse:collapse;box-shadow:none;border-radius:0;}
+  .inv-summary th{background:#DDE9F5;color:var(--primary-dark);font-weight:700;text-align:right;padding:7px 12px;border:1px solid #C7D9EB;font-size:12px;text-transform:none;}
+  .inv-summary td{padding:7px 12px;border:1px solid #C7D9EB;text-align:right;font-family:'IBM Plex Mono';font-size:13px;}
+  .inv-summary tr.total th, .inv-summary tr.total td{font-size:15px;font-weight:700;color:var(--ink);}
+  .inv-status-line{font-weight:700;font-size:14px;margin-bottom:18px;}
+  .inv-status-line.due{color:var(--brand-red);}
+  .inv-status-line.paid{color:var(--accent-dark);}
+  .inv-thankyou{font-family:'Libre Baskerville',serif;font-style:italic;font-size:13px;border-top:1px solid var(--line);padding-top:14px;text-decoration:underline;text-decoration-color:#ccc;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:9px;font-size:13.5px;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+
+  /* ---- Public invoice page ---- */
+  #public-invoice-page{display:none;min-height:100vh;background:var(--bg);padding:32px 16px;}
+  .public-wrap{max-width:760px;margin:0 auto;}
+  .public-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px;}
+  .public-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 30px;box-shadow:0 2px 10px rgba(31,73,110,0.08);}
+  .not-found{background:#fff;border:1px solid var(--line);border-radius:16px;padding:40px 30px;text-align:center;color:var(--grey-text);font-size:14px;}
+
+  @media print{
+    body *{visibility:hidden;}
+    .inv-doc, .inv-doc *{visibility:visible;}
+    .inv-doc{display:block !important;position:absolute;top:0;left:0;width:100%;padding:20px;}
+  }
+  @media (max-width:820px){
+    #app{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;align-items:center;padding:14px 16px;gap:16px;background:var(--primary-dark);}
+    .sidebar-foot{display:none;}
+    .nav{flex-direction:row;overflow-x:auto;}
+    main{padding:18px 16px;}
+    .stat-row{grid-template-columns:repeat(2,1fr);}
+    table thead{display:none;}
+    tbody tr{display:block;border-bottom:6px solid var(--bg);}
+    tbody td{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);}
+    tbody td::before{content:attr(data-label);font-weight:600;color:var(--grey-text);margin-right:10px;}
+    .inv-topbar{flex-direction:column;}
+    .inv-contactblock{text-align:left;}
+    .public-card{padding:20px 16px;}
+  }
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <div class="sidebar">
+    <div class="brand">West Washing Co<span>Job Manager</span></div>
+    <nav class="nav">
+      <button class="nav-item active" data-view="dashboard">Dashboard</button>
+      <button class="nav-item" data-view="calendar">Calendar</button>
+      <button class="nav-item" data-view="customers">Customers</button>
+      <button class="nav-item" data-view="jobs">Job Board</button>
+      <button class="nav-item" data-view="invoices">Invoices</button>
+    </nav>
+    <div class="sidebar-foot">Carrollton, GA<br>Mason &amp; Hayden</div>
+  </div>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="view-head">
+        <div>
+          <h1 id="dash-greeting">Dashboard</h1>
+          <p id="today-line"></p>
+        </div>
+      </div>
+      <div class="stat-row" id="stat-row"></div>
+      <div class="dash-section">
+        <h3>Scheduled jobs</h3>
+        <div id="dash-leads"></div>
+      </div>
+      <div class="dash-section">
+        <h3>Scheduled this week</h3>
+        <div id="dash-scheduled"></div>
+      </div>
+      <div class="dash-section">
+        <h3>Waiting on payment</h3>
+        <div id="dash-unpaid"></div>
+      </div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="view" id="view-calendar">
+      <div class="view-head">
+        <div>
+          <h1>Calendar</h1>
+          <p>Every job with a scheduled date shows up here. Tap a job to open it.</p>
+        </div>
+        <button class="primary accent" onclick="openJobModal()">+ New job</button>
+      </div>
+      <div class="cal-head">
+        <button class="ghost" onclick="calShiftMonth(-1)">&larr; Prev</button>
+        <h2 id="cal-month-label"></h2>
+        <button class="ghost" onclick="calShiftMonth(1)">Next &rarr;</button>
+        <button class="ghost" onclick="calGoToday()">Today</button>
+      </div>
+      <div class="cal-grid" id="cal-dow-row"></div>
+      <div class="cal-grid" id="cal-grid" style="margin-top:8px;"></div>
+    </section>
+
+    <!-- CUSTOMERS -->
+    <section class="view" id="view-customers">
+      <div class="view-head">
+        <div>
+          <h1>Customers</h1>
+          <p id="customer-count-line"></p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input class="search-box" id="customer-search" placeholder="Search name, phone, address...">
+          <button class="primary accent" onclick="openCustomerModal()">+ Add customer</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <button class="ghost" id="excel-link-btn" onclick="linkExcelFile()">Link Excel file</button>
+        <span class="mono" id="excel-sync-status" style="font-size:12px;color:var(--grey-text);"></span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Contact</th><th>Address</th><th>Service</th><th>Jobs</th><th></th></tr>
+        </thead>
+        <tbody id="customer-table-body"></tbody>
+      </table>
+    </section>
+
+    <!-- JOB BOARD -->
+    <section class="view" id="view-jobs">
+      <div class="view-head">
+        <div>
+          <h1>Job Board</h1>
+          <p>Move a job forward with the button on its card as work gets done.</p>
+        </div>
+        <button class="primary accent" onclick="openJobModal()">+ New job</button>
+      </div>
+      <div class="board" id="board"></div>
+    </section>
+
+    <!-- INVOICES -->
+    <section class="view" id="view-invoices">
+      <div class="view-head">
+        <div>
+          <h1>Invoices</h1>
+          <p id="invoice-summary-line"></p>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Invoice #</th><th>Customer</th><th>Service</th><th>Amount</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="invoice-table-body"></tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<!-- Customer modal -->
+<div class="overlay" id="customer-overlay">
+  <div class="modal">
+    <h2 id="customer-modal-title">Add customer</h2>
+    <input type="hidden" id="customer-id">
+    <div class="field"><label>Name</label><input id="c-name" placeholder="Jane Doe"></div>
+    <div class="field-row">
+      <div class="field"><label>Phone</label><input id="c-phone" placeholder="(470) 000-0000"></div>
+      <div class="field"><label>Email</label><input id="c-email" placeholder="jane@email.com"></div>
+    </div>
+    <div class="field"><label>Address</label><input id="c-address" placeholder="123 Main St, Carrollton, GA"></div>
+    <div class="field"><label>Notes</label><textarea id="c-notes" placeholder="Gate code, dog in yard, preferred day..."></textarea></div>
+    <div class="err-text" id="customer-err">Enter a name to save this customer.</div>
+    <div class="modal-actions">
+      <button class="ghost" id="customer-delete-btn" onclick="deleteCustomer()">Delete</button>
+      <div class="right">
+        <button class="ghost" onclick="closeModal('customer-overlay')">Cancel</button>
+        <button class="primary" onclick="saveCustomer()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Job modal -->
+<div class="overlay" id="job-overlay">
+  <div class="modal">
+    <h2 id="job-modal-title">New job</h2>
+    <input type="hidden" id="job-id">
+    <div class="field">
+      <label>Customer</label>
+      <select id="j-customer"></select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Service</label>
+        <select id="j-service">
+          <option>Pressure washing</option>
+          <option>Window washing</option>
+          <option>Trash can washing</option>
+          <option>Multiple services</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Price ($)</label>
+        <input id="j-price" type="number" min="0" step="1" placeholder="150">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Scheduled date</label>
+        <input id="j-date" type="date">
+      </div>
+      <div class="field">
+        <label>Scheduled time</label>
+        <input id="j-time" type="time">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Stage</label>
+        <select id="j-stage">
+          <option value="scheduled">Schedule</option>
+          <option value="invoiced">Invoiced</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="j-notes" placeholder="Job details, access notes, special requests..."></textarea></div>
+    <div class="err-text" id="job-err">Pick a customer before saving.</div>
+    <div class="modal-actions">
+      <button class="ghost" id="job-delete-btn" onclick="deleteJob()">Delete</button>
+      <div class="right">
+        <button class="ghost" onclick="closeModal('job-overlay')">Cancel</button>
+        <button class="primary" onclick="saveJob()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Invoice view modal -->
+<div class="overlay" id="invoice-overlay">
+  <div class="modal wide">
+
+    <div class="ai-box">
+      <label>Line-item description</label>
+      <textarea id="ai-description" placeholder="Write one, or let Claude turn the job notes into a professional line for this invoice."></textarea>
+      <div class="ai-actions">
+        <button class="ghost" id="ai-write-btn" onclick="writeWithClaude()">Write with Claude</button>
+        <button class="primary" onclick="applyDescription()">Use this description</button>
+      </div>
+      <div class="ai-status" id="ai-status"></div>
+    </div>
+
+    <div class="link-box" id="link-box">
+      <label>Link for your customer</label>
+      <div class="row">
+        <input type="text" id="invoice-link-input" readonly>
+        <button class="ghost" onclick="copyInvoiceLink()">Copy</button>
+      </div>
+    </div>
+
+    <div class="inv-doc" id="invoice-print"></div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <span class="badge" id="inv-status-badge"></span>
+      <div class="right">
+        <button class="ghost" onclick="closeModal('invoice-overlay')">Close</button>
+        <button class="ghost" onclick="showInvoiceLink()">Get customer link</button>
+        <button class="ghost" onclick="saveInvoiceImage()">Save image</button>
+        <button class="ghost" onclick="window.print()">Print</button>
+        <button class="primary accent" id="inv-mark-paid-btn" onclick="markInvoicePaid()">Mark paid</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Public, read-only invoice page (shown when the URL has ?invoice=ID) -->
+<div id="public-invoice-page"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- state ---------- */
+let customers = [];
+let jobs = [];
+let activeInvoiceJobId = null;
+let calMonth = new Date(); calMonth.setDate(1);
+
+const STAGES = [
+  {key:'scheduled', label:'Schedule'},
+  {key:'invoiced', label:'Invoiced'},
+  {key:'paid', label:'Paid'},
+];
+
+function uid(prefix){
+  return prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+function fmtMoney(n){
+  n = Number(n) || 0;
+  return '$' + n.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+function formatTime(t){
+  if(!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const dt = new Date(2000,0,1,h,m);
+  return dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+function openJobModalForDate(dateStr){
+  openJobModal();
+  document.getElementById('j-date').value = dateStr;
+  document.getElementById('j-stage').value = 'scheduled';
+}
+
+function fmtDateLong(d){
+  if(!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+}
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------- storage ---------- */
+async function loadData(){
+  try{
+    const c = localStorage.getItem('ww_customers');
+    customers = c ? JSON.parse(c) : [];
+  }catch(e){ customers = []; }
+  try{
+    const j = localStorage.getItem('ww_jobs');
+    jobs = j ? JSON.parse(j) : [];
+    jobs = jobs.map(job => ({
+      ...job,
+      stage: ['scheduled','invoiced','paid'].includes(job.stage) ? job.stage : 'scheduled'
+    }));
+  }catch(e){ jobs = []; }
+}
+async function saveCustomers(){
+  try{
+    localStorage.setItem('ww_customers', JSON.stringify(customers));
+  }catch(e){ showToast('Could not save — try again'); }
+  writeCustomersToExcel();
+}
+
+/* ---------- live Excel file link (File System Access API) ---------- */
+let excelFileHandle = null;
+
+function idbOpen(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open('ww-file-links', 1);
+    req.onupgradeneeded = ()=> req.result.createObjectStore('handles');
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbGet(key){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction('handles', 'readonly');
+    const req = tx.objectStore('handles').get(key);
+    req.onsuccess = ()=> resolve(req.result || null);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbSet(key, val){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(val, key);
+    tx.oncomplete = ()=> resolve();
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+
+function setExcelStatus(msg, isWarning){
+  const el = document.getElementById('excel-sync-status');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = isWarning ? 'var(--brand-red)' : 'var(--grey-text)';
+}
+
+async function linkExcelFile(){
+  if(!('showSaveFilePicker' in window)){
+    showToast('This browser can\'t link files directly — use Chrome or Edge on desktop.');
+    return;
+  }
+  let handle;
+  try{
+    handle = await window.showSaveFilePicker({
+      suggestedName: 'Customer_information.xlsx',
+      types: [{
+        description: 'Excel Workbook',
+        accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']}
+      }]
+    });
+  }catch(e){
+    if(e.name !== 'AbortError'){
+      console.error(e);
+      showToast('Could not open the save dialog: ' + (e.message || e.name));
+    }
+    return;
+  }
+  excelFileHandle = handle;
+  document.getElementById('excel-link-btn').textContent = 'Re-link Excel file';
+  setExcelStatus('Linked: ' + handle.name);
+  try{
+    await idbSet('customersFile', handle);
+  }catch(e){
+    console.error('Could not remember this file for next time', e);
+  }
+  await writeCustomersToExcel();
+}
+
+async function tryReconnectExcelFile(){
+  try{
+    const handle = await idbGet('customersFile');
+    if(!handle) return;
+    excelFileHandle = handle;
+    document.getElementById('excel-link-btn').textContent = 'Re-link Excel file';
+    const perm = await handle.queryPermission({mode:'readwrite'});
+    if(perm === 'granted'){
+      setExcelStatus('Linked: ' + handle.name);
+      await writeCustomersToExcel();
+    }else{
+      setExcelStatus('Excel file linked — click "Re-link Excel file" to reconnect', true);
+    }
+  }catch(e){
+    console.error(e);
+  }
+}
+
+async function writeCustomersToExcel(){
+  if(!excelFileHandle) return;
+  try{
+    if(typeof XLSX === 'undefined'){
+      throw new Error('The Excel library did not load (check your internet connection)');
+    }
+    let perm = await excelFileHandle.queryPermission({mode:'readwrite'});
+    if(perm !== 'granted'){
+      perm = await excelFileHandle.requestPermission({mode:'readwrite'});
+    }
+    if(perm !== 'granted'){
+      setExcelStatus('Permission was not granted — click "Re-link Excel file"', true);
+      return;
+    }
+    const rows = [
+      ['Name','Phone','Email','Address','Notes','Added'],
+      ...customers.map(c=>[
+        c.name || '',
+        c.phone || '',
+        c.email || '',
+        c.address || '',
+        c.notes || '',
+        c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US') : ''
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:22},{wch:16},{wch:26},{wch:30},{wch:34},{wch:12}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+    const buf = XLSX.write(wb, {type:'array', bookType:'xlsx'});
+    const writable = await excelFileHandle.createWritable();
+    await writable.write(buf);
+    await writable.close();
+    setExcelStatus('Synced to ' + excelFileHandle.name + ' just now');
+  }catch(e){
+    console.error(e);
+    const msg = e && e.message ? e.message : (e && e.name ? e.name : 'Unknown error');
+    setExcelStatus('Sync failed: ' + msg, true);
+    showToast('Could not write to Excel file: ' + msg);
+  }
+}
+async function saveJobs(){
+  try{
+    localStorage.setItem('ww_jobs', JSON.stringify(jobs));
+  }catch(e){ showToast('Could not save — try again'); }
+}
+
+/* ---------- nav ---------- */
+document.querySelectorAll('.nav-item').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.view).classList.add('active');
+    if(btn.dataset.view === 'calendar') renderCalendar();
+  });
+});
+
+/* ---------- render: dashboard ---------- */
+function renderDashboard(){
+  const now = new Date();
+  const hour = now.getHours();
+  const greetWord = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+  document.getElementById('dash-greeting').textContent = 'Good ' + greetWord;
+  document.getElementById('today-line').textContent = now.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+
+  const scheduledCount = jobs.filter(j=>j.stage==='scheduled').length;
+  const invoicedCount = jobs.filter(j=>j.stage==='invoiced').length;
+  const owed = jobs.filter(j=>j.stage==='invoiced').reduce((s,j)=>s+Number(j.price||0),0);
+  const paidThisMonth = jobs.filter(j=>{
+    if(j.stage!=='paid' || !j.paidDate) return false;
+    const d = new Date(j.paidDate);
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  }).reduce((s,j)=>s+Number(j.price||0),0);
+
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat-card"><div class="num">${scheduledCount}</div><div class="label">Scheduled jobs</div></div>
+    <div class="stat-card"><div class="num">${invoicedCount}</div><div class="label">Open invoices</div></div>
+    <div class="stat-card warn"><div class="num">${fmtMoney(owed)}</div><div class="label">Outstanding invoices</div></div>
+    <div class="stat-card good"><div class="num">${fmtMoney(paidThisMonth)}</div><div class="label">Paid this month</div></div>
+  `;
+
+  const leads = jobs.filter(j=>j.stage==='scheduled' && j.scheduledDate)
+    .sort((a,b)=>(a.scheduledDate||'').localeCompare(b.scheduledDate||'') || (a.scheduledTime||'').localeCompare(b.scheduledTime||''));
+  document.getElementById('dash-leads').innerHTML = leads.length
+    ? leads.slice(0,5).map(j=>dashRow(j, true)).join('')
+    : '<div class="empty-row">No jobs scheduled yet.</div>';
+
+  const weekOut = new Date(); weekOut.setDate(weekOut.getDate()+7);
+  const scheduled = jobs.filter(j=>j.stage==='scheduled' && j.scheduledDate && new Date(j.scheduledDate) <= weekOut)
+    .sort((a,b)=>(a.scheduledDate||'').localeCompare(b.scheduledDate||''));
+  document.getElementById('dash-scheduled').innerHTML = scheduled.length
+    ? scheduled.map(j=>dashRow(j, true)).join('')
+    : '<div class="empty-row">Nothing scheduled in the next 7 days.</div>';
+
+  const unpaid = jobs.filter(j=>j.stage==='invoiced');
+  document.getElementById('dash-unpaid').innerHTML = unpaid.length
+    ? unpaid.map(j=>dashRow(j)).join('')
+    : '<div class="empty-row">No open invoices.</div>';
+}
+function dashRow(job, showDate){
+  const cust = customers.find(c=>c.id===job.customerId);
+  return `<div class="list-row">
+    <div class="r-left"><b>${cust?escapeHtml(cust.name):'Unknown'}</b><small>${escapeHtml(job.service)}${showDate && job.scheduledDate ? ' · ' + fmtDate(job.scheduledDate) + (job.scheduledTime ? ' at ' + formatTime(job.scheduledTime) : '') : ''}</small></div>
+    <div class="mono">${fmtMoney(job.price)}</div>
+  </div>`;
+}
+
+/* ---------- render: calendar ---------- */
+function renderCalendar(){
+  const label = calMonth.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+  document.getElementById('cal-month-label').textContent = label;
+
+  const dowRow = document.getElementById('cal-dow-row');
+  dowRow.innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const year = calMonth.getFullYear();
+  const month = calMonth.getMonth();
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  const jobsByDate = {};
+  jobs.forEach(j=>{
+    if(j.scheduledDate){
+      (jobsByDate[j.scheduledDate] = jobsByDate[j.scheduledDate] || []).push(j);
+    }
+  });
+
+  let cells = [];
+  for(let i=firstDow-1; i>=0; i--){
+    cells.push({num: daysInPrevMonth-i, otherMonth:true, dateStr:null});
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    cells.push({num:d, otherMonth:false, dateStr});
+  }
+  while(cells.length % 7 !== 0){
+    cells.push({num: cells.length - (firstDow + daysInMonth) + 1, otherMonth:true, dateStr:null});
+  }
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = cells.map(cell=>{
+    const isToday = cell.dateStr === todayStr;
+    const dayJobs = cell.dateStr ? (jobsByDate[cell.dateStr] || []) : [];
+    const chips = dayJobs.map(j=>{
+      const cust = customers.find(c=>c.id===j.customerId);
+      const paidClass = j.stage==='paid' ? 'paid' : '';
+      const time = j.scheduledTime ? formatTime(j.scheduledTime) + ' · ' : '';
+      return `<div class="cal-job-chip ${paidClass}" onclick="event.stopPropagation(); openJobModal('${j.id}')"><span class="cal-job-time">${escapeHtml(time)}</span>${cust?escapeHtml(cust.name):'Job'}</div>`;
+    }).join('');
+    return `<div class="cal-day ${cell.otherMonth?'other-month':''} ${isToday?'today':''}">
+      <div class="day-num">${cell.num}</div>
+      ${chips}
+      ${!cell.otherMonth && cell.dateStr ? `` : ''}
+    </div>`;
+  }).join('');
+}
+function calShiftMonth(delta){
+  calMonth.setMonth(calMonth.getMonth()+delta);
+  renderCalendar();
+}
+function calGoToday(){
+  calMonth = new Date(); calMonth.setDate(1);
+  renderCalendar();
+}
+
+/* ---------- render: customers ---------- */
+function renderCustomers(){
+  const q = (document.getElementById('customer-search').value || '').toLowerCase();
+  const filtered = customers.filter(c=>
+    !q || [c.name,c.phone,c.email,c.address].join(' ').toLowerCase().includes(q)
+  );
+  document.getElementById('customer-count-line').textContent = customers.length + ' customer' + (customers.length===1?'':'s') + ' on file';
+
+  const body = document.getElementById('customer-table-body');
+  if(!filtered.length){
+    body.innerHTML = `<tr><td colspan="6" style="color:var(--grey-text);">No customers match that search.</td></tr>`;
+    return;
+  }
+  body.innerHTML = filtered.map(c=>{
+    const custJobs = jobs.filter(j=>j.customerId===c.id);
+    const lastService = custJobs.length ? custJobs[custJobs.length-1].service : '—';
+    return `<tr>
+      <td data-label="Name"><b>${escapeHtml(c.name)}</b></td>
+      <td data-label="Contact">${escapeHtml(c.phone||'')}${c.phone&&c.email?'<br>':''}${escapeHtml(c.email||'')}</td>
+      <td data-label="Address">${escapeHtml(c.address||'')}</td>
+      <td data-label="Service">${escapeHtml(lastService)}</td>
+      <td data-label="Jobs">${custJobs.length}</td>
+      <td data-label=""><button class="link" onclick="openCustomerModal('${c.id}')">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+document.getElementById('customer-search').addEventListener('input', renderCustomers);
+
+function openCustomerModal(id){
+  document.getElementById('customer-err').style.display='none';
+  document.getElementById('customer-id').value = id || '';
+  const c = id ? customers.find(x=>x.id===id) : null;
+  document.getElementById('customer-modal-title').textContent = c ? 'Edit customer' : 'Add customer';
+  document.getElementById('c-name').value = c ? c.name : '';
+  document.getElementById('c-phone').value = c ? c.phone : '';
+  document.getElementById('c-email').value = c ? c.email : '';
+  document.getElementById('c-address').value = c ? c.address : '';
+  document.getElementById('c-notes').value = c ? c.notes : '';
+  document.getElementById('customer-delete-btn').style.visibility = c ? 'visible' : 'hidden';
+  document.getElementById('customer-overlay').classList.add('active');
+}
+async function saveCustomer(){
+  const name = document.getElementById('c-name').value.trim();
+  if(!name){ document.getElementById('customer-err').style.display='block'; return; }
+  const id = document.getElementById('customer-id').value;
+  const data = {
+    name,
+    phone: document.getElementById('c-phone').value.trim(),
+    email: document.getElementById('c-email').value.trim(),
+    address: document.getElementById('c-address').value.trim(),
+    notes: document.getElementById('c-notes').value.trim(),
+  };
+  if(id){
+    const idx = customers.findIndex(c=>c.id===id);
+    customers[idx] = {...customers[idx], ...data};
+  }else{
+    customers.push({id: uid('cust'), createdAt: new Date().toISOString(), ...data});
+  }
+  await saveCustomers();
+  closeModal('customer-overlay');
+  renderAll();
+  showToast('Customer saved');
+}
+async function deleteCustomer(){
+  const id = document.getElementById('customer-id').value;
+  if(!id) return;
+  if(jobs.some(j=>j.customerId===id)){
+    showToast("Remove this customer's jobs first");
+    return;
+  }
+  customers = customers.filter(c=>c.id!==id);
+  await saveCustomers();
+  closeModal('customer-overlay');
+  renderAll();
+  showToast('Customer deleted');
+}
+
+/* ---------- render: job board ---------- */
+function renderBoard(){
+  const board = document.getElementById('board');
+  board.innerHTML = STAGES.map(stage=>{
+    const stageJobs = jobs.filter(j=>j.stage===stage.key);
+    return `<div class="stage">
+      <div class="stage-title">${stage.label} <span class="count">${stageJobs.length}</span></div>
+      ${stageJobs.map(j=>jobCardHtml(j, stage.key)).join('') || ''}
+    </div>`;
+  }).join('');
+}
+function jobCardHtml(job, stageKey){
+  const cust = customers.find(c=>c.id===job.customerId);
+  const idx = STAGES.findIndex(s=>s.key===stageKey);
+  const nextStage = STAGES[idx+1];
+  return `<div class="job-card">
+    <div onclick="openJobModal('${job.id}')">
+      <div class="jc-top">${cust?escapeHtml(cust.name):'Unknown'}</div>
+      <div class="jc-service">${escapeHtml(job.service)}</div>
+      <div class="jc-meta">${job.scheduledDate ? fmtDate(job.scheduledDate) : 'No date set'}${job.scheduledTime ? ' · ' + formatTime(job.scheduledTime) : ''}</div>
+      <div class="jc-price">${fmtMoney(job.price)}</div>
+    </div>
+    ${nextStage ? `<button class="ghost" style="width:100%;margin-top:8px;padding:6px;font-size:12px;" onclick="advanceJob('${job.id}')">Move to ${nextStage.label} →</button>` : ''}
+  </div>`;
+}
+async function advanceJob(id){
+  const job = jobs.find(j=>j.id===id);
+  if(!job) return;
+  const idx = STAGES.findIndex(s=>s.key===job.stage);
+  const next = STAGES[idx+1];
+  if(!next) return;
+  job.stage = next.key;
+  if(next.key === 'invoiced' && !job.invoiceNumber){
+    job.invoiceNumber = 'INV-' + (1000 + jobs.filter(j=>j.invoiceNumber).length + 1);
+    job.invoicedDate = new Date().toISOString().slice(0,10);
+  }
+  if(next.key === 'paid'){
+    job.paidDate = new Date().toISOString().slice(0,10);
+  }
+  await saveJobs();
+  renderAll();
+}
+
+function populateCustomerSelect(){
+  const sel = document.getElementById('j-customer');
+  sel.innerHTML = customers.length
+    ? customers.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')
+    : '<option value="">Add a customer first</option>';
+}
+function openJobModal(id){
+  document.getElementById('job-err').style.display='none';
+  populateCustomerSelect();
+  document.getElementById('job-id').value = id || '';
+  const j = id ? jobs.find(x=>x.id===id) : null;
+  document.getElementById('job-modal-title').textContent = j ? 'Edit job' : 'New job';
+  if(j) document.getElementById('j-customer').value = j.customerId;
+  document.getElementById('j-service').value = j ? j.service : 'Pressure washing';
+  document.getElementById('j-price').value = j ? j.price : '';
+  document.getElementById('j-date').value = j ? (j.scheduledDate||'') : '';
+  document.getElementById('j-time').value = j ? (j.scheduledTime||'') : '';
+  document.getElementById('j-stage').value = j && ['scheduled','invoiced','paid'].includes(j.stage) ? j.stage : 'scheduled';
+  document.getElementById('j-notes').value = j ? (j.notes||'') : '';
+  document.getElementById('job-delete-btn').style.visibility = j ? 'visible' : 'hidden';
+  document.getElementById('job-overlay').classList.add('active');
+}
+async function saveJob(){
+  const customerId = document.getElementById('j-customer').value;
+  if(!customerId){ document.getElementById('job-err').style.display='block'; return; }
+  const id = document.getElementById('job-id').value;
+  const stage = document.getElementById('j-stage').value;
+  const data = {
+    customerId,
+    service: document.getElementById('j-service').value,
+    price: Number(document.getElementById('j-price').value) || 0,
+    scheduledDate: document.getElementById('j-date').value,
+    scheduledTime: document.getElementById('j-time').value,
+    stage,
+    notes: document.getElementById('j-notes').value.trim(),
+  };
+  if(id){
+    const idx = jobs.findIndex(j=>j.id===id);
+    const existing = jobs[idx];
+    if(stage==='invoiced' && existing.stage!=='invoiced' && !existing.invoiceNumber){
+      data.invoiceNumber = 'INV-' + (1000 + jobs.filter(j=>j.invoiceNumber).length + 1);
+      data.invoicedDate = new Date().toISOString().slice(0,10);
+    }
+    if(stage==='paid' && existing.stage!=='paid'){
+      data.paidDate = new Date().toISOString().slice(0,10);
+    }
+    jobs[idx] = {...existing, ...data};
+  }else{
+    jobs.push({id: uid('job'), createdAt: new Date().toISOString(), ...data});
+  }
+  await saveJobs();
+  closeModal('job-overlay');
+  renderAll();
+  showToast('Job saved');
+}
+async function deleteJob(){
+  const id = document.getElementById('job-id').value;
+  if(!id) return;
+  jobs = jobs.filter(j=>j.id!==id);
+  await saveJobs();
+  closeModal('job-overlay');
+  renderAll();
+  showToast('Job deleted');
+}
+
+/* ---------- render: invoices list ---------- */
+function renderInvoices(){
+  const invoiced = jobs.filter(j=>j.invoiceNumber).sort((a,b)=>(b.invoicedDate||'').localeCompare(a.invoicedDate||''));
+  const open = invoiced.filter(j=>j.stage!=='paid').reduce((s,j)=>s+Number(j.price||0),0);
+  document.getElementById('invoice-summary-line').textContent =
+    invoiced.length ? `${fmtMoney(open)} outstanding across ${invoiced.filter(j=>j.stage!=='paid').length} open invoice${invoiced.filter(j=>j.stage!=='paid').length===1?'':'s'}` : 'No invoices yet — move a job to Invoiced on the Job Board to create one.';
+
+  const body = document.getElementById('invoice-table-body');
+  if(!invoiced.length){
+    body.innerHTML = `<tr><td colspan="6" style="color:var(--grey-text);">No invoices yet.</td></tr>`;
+    return;
+  }
+  body.innerHTML = invoiced.map(j=>{
+    const cust = customers.find(c=>c.id===j.customerId);
+    const paid = j.stage==='paid';
+    return `<tr>
+      <td data-label="Invoice #" class="mono">${j.invoiceNumber}</td>
+      <td data-label="Customer">${cust?escapeHtml(cust.name):'Unknown'}</td>
+      <td data-label="Service">${escapeHtml(j.service)}</td>
+      <td data-label="Amount" class="mono">${fmtMoney(j.price)}</td>
+      <td data-label="Status"><span class="badge ${paid?'paid':'unpaid'}">${paid?'Paid':'Unpaid'}</span></td>
+      <td data-label=""><button class="link" onclick="viewInvoice('${j.id}')">View</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---------- shared invoice document builder ---------- */
+function invoiceLineText(job){
+  return job.invoiceDescription || (job.service + (job.notes ? ' — ' + job.notes : ''));
+}
+function buildInvoiceHtml(job, cust){
+  const paid = job.stage === 'paid';
+  const statusLine = paid
+    ? `PAID IN FULL — ${fmtMoney(job.price)}${job.paidDate ? ' received ' + fmtDateLong(job.paidDate) : ''}`
+    : `PAYMENT DUE — ${fmtMoney(job.price)}`;
+  return `
+    <div class="inv-topbar">
+      <div class="inv-brandblock">
+        <div class="name">West Washing Co</div>
+        <div class="tag">Exterior Cleaning</div>
+      </div>
+      <div class="inv-contactblock">
+        Carrollton, GA<br>
+        (470) 248-0227<br>
+        WestWashCo@gmail.com<br>
+        <span class="site">westwashco.com</span>
+      </div>
+    </div>
+    <div class="inv-title"><span>INVOICE</span></div>
+    <table class="inv-info-table">
+      <tr>
+        <th>Date</th><th>Invoice #</th><th>Contact</th><th>Property</th><th>Crew</th>
+      </tr>
+      <tr>
+        <td>${job.invoicedDate ? fmtDate(job.invoicedDate) : '—'}</td>
+        <td class="mono">${job.invoiceNumber || '—'}</td>
+        <td>${cust ? escapeHtml(cust.name) : 'Unknown'}</td>
+        <td>${cust ? escapeHtml(cust.address||'—') : '—'}</td>
+        <td>Mason &amp; Hayden</td>
+      </tr>
+    </table>
+    <div class="inv-customer">
+      <div class="lines">
+        <b class="label">Customer:</b>
+        <div style="display:inline-block;vertical-align:top;">
+          <div>${cust ? escapeHtml(cust.name) : 'Unknown'}</div>
+          <div>${cust ? escapeHtml(cust.address||'') : ''}</div>
+          <div>${cust ? escapeHtml(cust.phone||'') : ''}</div>
+        </div>
+      </div>
+      ${cust && cust.email ? `<div class="email">${escapeHtml(cust.email)}</div>` : ''}
+    </div>
+    <table class="inv-work-table">
+      <tr><th>Service</th><th>Description of work</th><th style="text-align:right;">Cost</th></tr>
+      <tr>
+        <td class="svc-col">${escapeHtml(job.service)}</td>
+        <td>${escapeHtml(invoiceLineText(job))}</td>
+        <td class="cost-col">${fmtMoney(job.price)}</td>
+      </tr>
+    </table>
+    <div class="inv-summary">
+      <table>
+        <tr><th>Labor &amp; materials</th><td>Included</td></tr>
+        <tr><th>Tax</th><td>Included</td></tr>
+        <tr class="total"><th>Total due</th><td>${fmtMoney(job.price)}</td></tr>
+      </table>
+    </div>
+    <div class="inv-status-line ${paid?'paid':'due'}">${statusLine}</div>
+    <div class="inv-thankyou">Thank you for choosing West Washing Co${cust ? ', ' + escapeHtml(cust.name) : ''}. Questions about this invoice? Call (470) 248-0227 or email WestWashCo@gmail.com.</div>
+  `;
+}
+
+function viewInvoice(jobId){
+  const job = jobs.find(j=>j.id===jobId);
+  if(!job) return;
+  activeInvoiceJobId = jobId;
+  const cust = customers.find(c=>c.id===job.customerId);
+  document.getElementById('invoice-print').innerHTML = buildInvoiceHtml(job, cust);
+  document.getElementById('ai-description').value = job.invoiceDescription || '';
+  document.getElementById('ai-status').style.display = 'none';
+  document.getElementById('link-box').style.display = 'none';
+  const paid = job.stage === 'paid';
+  const badge = document.getElementById('inv-status-badge');
+  badge.textContent = paid ? 'Paid' : 'Unpaid';
+  badge.className = 'badge ' + (paid ? 'paid' : 'unpaid');
+  const payBtn = document.getElementById('inv-mark-paid-btn');
+  payBtn.style.display = paid ? 'none' : 'inline-block';
+  document.getElementById('invoice-overlay').classList.add('active');
+}
+async function markInvoicePaid(){
+  const job = jobs.find(j=>j.id===activeInvoiceJobId);
+  if(!job) return;
+  job.stage = 'paid';
+  job.paidDate = new Date().toISOString().slice(0,10);
+  await saveJobs();
+  closeModal('invoice-overlay');
+  renderAll();
+  showToast('Marked as paid');
+}
+
+/* ---------- save invoice as image ---------- */
+async function saveInvoiceImage(){
+  const job = jobs.find(j=>j.id===activeInvoiceJobId);
+  if(!job) return;
+
+  const target = document.getElementById('invoice-print');
+  if(!target){
+    showToast('Invoice preview not found');
+    return;
+  }
+
+  try{
+    showToast('Creating invoice image...');
+
+    // Load html2canvas if the CDN script was blocked or failed to load.
+    if(typeof html2canvas === 'undefined'){
+      await new Promise((resolve,reject)=>{
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    if(typeof html2canvas === 'undefined'){
+      throw new Error('Invoice image library unavailable');
+    }
+
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      imageTimeout: 15000
+    });
+
+    const customer = customers.find(c=>c.id===job.customerId);
+    const safeName = (customer?.name || 'customer')
+      .replace(/[^a-z0-9]+/gi,'-')
+      .replace(/^-|-$/g,'');
+
+    const fileName = `${job.invoiceNumber || 'invoice'}-${safeName || 'customer'}.png`;
+
+    // Use a Blob download instead of relying only on canvas.toDataURL().
+    canvas.toBlob(blob=>{
+      if(!blob){
+        showToast('Could not create invoice image');
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+      showToast('Invoice image saved');
+    }, 'image/png');
+
+  }catch(e){
+    console.error(e);
+    showToast('Could not save image. Try Print, then Save as PDF.');
+  }
+}
+
+function invoiceLinkFor(jobId){
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('invoice', jobId);
+  return url.toString();
+}
+function showInvoiceLink(){
+  const box = document.getElementById('link-box');
+  const input = document.getElementById('invoice-link-input');
+  input.value = invoiceLinkFor(activeInvoiceJobId);
+  box.style.display = 'block';
+}
+async function copyInvoiceLink(){
+  const input = document.getElementById('invoice-link-input');
+  try{
+    await navigator.clipboard.writeText(input.value);
+    showToast('Link copied');
+  }catch(e){
+    input.select();
+    showToast('Select the link and copy it manually');
+  }
+}
+
+/* ---------- Claude invoice writer ---------- */
+async function writeWithClaude(){
+  const job = jobs.find(j=>j.id===activeInvoiceJobId);
+  if(!job) return;
+  const btn = document.getElementById('ai-write-btn');
+  const status = document.getElementById('ai-status');
+  btn.disabled = true;
+  btn.textContent = 'Writing...';
+  status.style.display = 'none';
+
+  const prompt = `Write one professional, plain-language invoice line-item description for a home exterior cleaning job. `
+    + `Business: West Washing Company, an exterior cleaning company in Carrollton, Georgia offering pressure washing, window washing, and trash can washing. `
+    + `Service performed: ${job.service}. `
+    + `Job notes from the crew: ${job.notes || 'none provided'}. `
+    + `Write exactly one sentence, no marketing language, no exclamation points, no quotation marks around it. Return only the sentence, nothing else.`;
+
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+      .trim()
+      .replace(/^["']|["']$/g, '');
+    if(!text) throw new Error('empty response');
+    document.getElementById('ai-description').value = text;
+    status.textContent = 'Written. Edit it if you want, then click "Use this description."';
+    status.style.display = 'block';
+  }catch(e){
+    status.textContent = "Couldn't reach Claude just now — write the line yourself or try again.";
+    status.style.display = 'block';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Write with Claude';
+  }
+}
+async function applyDescription(){
+  const job = jobs.find(j=>j.id===activeInvoiceJobId);
+  if(!job) return;
+  const text = document.getElementById('ai-description').value.trim();
+  job.invoiceDescription = text;
+  await saveJobs();
+  const cust = customers.find(c=>c.id===job.customerId);
+  document.getElementById('invoice-print').innerHTML = buildInvoiceHtml(job, cust);
+  renderInvoices();
+  showToast('Description saved');
+}
+
+/* ---------- modal helpers ---------- */
+function closeModal(id){
+  document.getElementById(id).classList.remove('active');
+}
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', (e)=>{ if(e.target === ov) closeModal(ov.id); });
+});
+
+/* ---------- render all ---------- */
+function renderAll(){
+  renderDashboard();
+  renderCustomers();
+  renderBoard();
+  renderInvoices();
+  if(document.getElementById('view-calendar').classList.contains('active')) renderCalendar();
+}
+
+/* ---------- public read-only invoice page ---------- */
+function renderPublicInvoice(jobId){
+  document.getElementById('app').style.display = 'none';
+  const page = document.getElementById('public-invoice-page');
+  page.style.display = 'block';
+  const job = jobs.find(j=>j.id===jobId);
+  if(!job){
+    page.innerHTML = `<div class="public-wrap"><div class="not-found">We couldn't find that invoice. Please contact West Washing Co at WestWashCo@gmail.com or (470) 248-0227.</div></div>`;
+    return;
+  }
+  const cust = customers.find(c=>c.id===job.customerId);
+  page.innerHTML = `<div class="public-wrap">
+    <div class="public-toolbar"><button class="ghost" onclick="window.print()">Print / Save as PDF</button></div>
+    <div class="public-card"><div class="inv-doc">${buildInvoiceHtml(job, cust)}</div></div>
+  </div>`;
+}
+
+/* ---------- init ---------- */
+async function init(){
+  await loadData();
+  const invId = new URLSearchParams(window.location.search).get('invoice');
+  if(invId){
+    renderPublicInvoice(invId);
+  }else{
+    renderAll();
+    tryReconnectExcelFile();
+  }
+}
+init();
+</script>
+</body>
+</html>
